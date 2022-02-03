@@ -1,0 +1,406 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd  http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd">
+    <http:listener-config name="imdb-api-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+    <apikit:config name="imdb-api-config" api="resource::0573c55c-2ccc-4654-a08e-a0fc2c2f17cb:imdb-api:1.0.2:raml:zip:imdb-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <http:request-config name="IMDB" doc:name="HTTP Request configuration" doc:id="cc706b01-c7f6-47f5-93d8-038e8aa8027d">
+        <http:request-connection protocol="HTTPS" host="imdb8.p.rapidapi.com" />
+    </http:request-config>
+   <api-gateway:autodiscovery apiId="17596652" ignoreBasePath="true" doc:name="API Autodiscovery" doc:id="f6e51226-212c-4afb-969d-e6131a8c5a7f" flowRef="imdb-api-main" />
+    <flow name="imdb-api-main">
+        <http:listener config-ref="imdb-api-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="imdb-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform xsi:schemaLocation=" http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="get:\findTitle:imdb-api-config">
+        <set-variable value="#[attributes.queryParams.title]" doc:name="set title" doc:id="4a61805b-ce49-4e9c-86d5-b74e62d4dd1f" variableName="title" />
+        <logger level="INFO" doc:name="Log title" doc:id="4ab98ebe-627d-4d1d-837c-e68ac0e65c29" message="********#[vars.title]********" />
+        <http:request method="GET" doc:name="getTitleFind" doc:id="f0ea07c0-5dfe-4ca4-9b94-50c2974f6268" config-ref="IMDB" path="/title/find">
+            <http:headers><![CDATA[#[output application/java
+---
+{
+	"X-Rapidapi-Key" : "60e11edbd4msh01a6924bacdeda6p1be6fejsnd857e4dd56ea"
+}]]]></http:headers>
+            <http:query-params><![CDATA[#[output application/java
+---
+{
+	q : vars.title
+}]]]></http:query-params>
+        </http:request>
+        <ee:transform doc:name="allTitles" doc:id="bb7a89f1-bf5d-4ecc-92d1-97ac2bcdbd99">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+import * from dw::core::Strings
+output application/json skipNullOn="everywhere"
+---
+payload.results filter ($.titleType == 'tvSeries' or $.titleType == 'tvMovie' or $.titleType == 'movie')map{
+	id:substringBefore(substringAfter($.id,"/title/"),"/"),
+	"TotalEpisodes": $.numberOfEpisodes,
+      "seriesEndYear": $.seriesEndYear,
+      "seriesStartYear": $.seriesStartYear,
+      "Title": $.title,
+      "Title Type": $.titleType,
+      "Year Released": $.year,
+      "StarCast":$.principals map (user) -> {
+      	"Name": user.name,
+      	"Category": user.category,
+      	"Character": user.characters[0]
+      }
+} filter (lower($.Title) contains lower(vars.title))]]></ee:set-payload>
+            </ee:message>
+            <ee:variables />
+        </ee:transform>
+    </flow>
+    <flow name="get:\getRatings:imdb-api-config">
+        <set-variable value="#[attributes.queryParams.titleId]" doc:name="Set titleId" doc:id="7287ffdc-762e-49c6-a8b3-e26c5e9e873d" variableName="titleId" />
+        <logger level="INFO" doc:name="Logger" doc:id="e7c33cf7-d7fd-451c-95f3-1cd0bf9e367f" message="*****#[vars.titleId]" />
+        <http:request method="GET" doc:name="get-ratings" doc:id="89b4709f-a594-4bd2-8982-a3bf4e415ae1" config-ref="IMDB" path="/title/get-ratings">
+            <http:headers><![CDATA[#[output application/java
+---
+{
+	"X-Rapidapi-Key" : "60e11edbd4msh01a6924bacdeda6p1be6fejsnd857e4dd56ea"
+}]]]></http:headers>
+            <http:query-params><![CDATA[#[output application/java
+---
+{
+	tconst : vars.titleId
+}]]]></http:query-params>
+        </http:request>
+        <ee:transform doc:name="Transform Message" doc:id="3962bc6d-342f-4f74-b3e0-a91940ed3d7e">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+import * from dw::core::Strings
+output application/json
+---
+{
+	id: substringBefore(substringAfter(payload.id,"/title/"),"/"),
+	title: payload.title,
+	titleType: payload.titleType,
+	year: payload.year,
+	rating: payload.rating,
+	histograms: payload.ratingsHistograms mapObject(v,k,i) ->(
+		(k):v.aggregateRating
+	)
+	
+}]]></ee:set-payload>
+            </ee:message>
+            <ee:variables />
+        </ee:transform>
+    </flow>
+    <flow name="get:\getTitleDetails:imdb-api-config">
+        <set-variable value="#[attributes.queryParams.titleId]" doc:name="set titleId" doc:id="3e599a00-6a9a-45c7-93a1-583f1f307c26" variableName="titleId" />
+        <logger level="INFO" doc:name="Log titleId" doc:id="d0069786-0c2c-409a-88b0-987b6fd908fa" message="********#[vars.titleId]********" />
+        <http:request method="GET" doc:name="getBaseDetails" doc:id="d6bc596f-c64a-4ac3-96bc-c8ada7a97792" config-ref="IMDB" path="/title/get-base">
+            <http:headers><![CDATA[#[output application/java
+---
+{
+	"X-Rapidapi-Key" : "60e11edbd4msh01a6924bacdeda6p1be6fejsnd857e4dd56ea"
+}]]]></http:headers>
+            <http:query-params><![CDATA[#[output application/java
+---
+{
+	tconst : vars.titleId
+}]]]></http:query-params>
+        </http:request>
+        <set-variable value="#[payload.title]" doc:name="Set title" doc:id="60e1d39b-d36c-48a0-ad76-55ecaa7772ed" variableName="title" />
+        <http:request method="GET" doc:name="getTitleFind" doc:id="81bf3418-b32f-4fc8-bc1a-7a2d1ac4d4b0" config-ref="IMDB" path="/title/find">
+            <http:headers><![CDATA[#[output application/java
+---
+{
+	"X-Rapidapi-Key" : "60e11edbd4msh01a6924bacdeda6p1be6fejsnd857e4dd56ea"
+}]]]></http:headers>
+            <http:query-params><![CDATA[#[output application/java
+---
+{
+	q : vars.title
+}]]]></http:query-params>
+        </http:request>
+        <ee:transform doc:name="allTitles" doc:id="5d794864-0890-4a43-9eac-2cf65be92746">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="titleInfo"><![CDATA[%dw 2.0
+import * from dw::core::Strings
+output application/java
+---
+payload]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <http:request method="GET" doc:name="getOverviewDetails" doc:id="446b5a31-5c34-4f09-ad2a-15de1cdf16a2" config-ref="IMDB" path="/title/get-overview-details" targetValue="#[overviewDetails]">
+            <http:headers><![CDATA[#[output application/java
+---
+{
+	"X-Rapidapi-Key" : "60e11edbd4msh01a6924bacdeda6p1be6fejsnd857e4dd56ea"
+}]]]></http:headers>
+            <http:query-params><![CDATA[#[output application/java
+---
+{
+	tconst : vars.titleId
+}]]]></http:query-params>
+        </http:request>
+        <ee:transform doc:name="Transform Message" doc:id="daa32140-de42-4788-9845-a79f5c65a06a">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+import * from dw::core::Strings
+output application/json
+---
+{(vars.titleInfo.results filter ($.id contains vars.titleId) map{
+	id:substringBefore(substringAfter($.id,"/title/"),"/"),
+	"TotalEpisodes": $.numberOfEpisodes default 'NA',
+      "Title": $.title,
+      "Title Type": $.titleType,
+      "Year Released": $.year,
+      "poster": $.image,
+      "StarCast":$.principals map (user) -> {
+      	"Name": user.name,
+      	"Category": user.category,
+      	"Character": user.characters[0]
+      }
+})}
+++
+{duration:payload.title.runningTimeInMinutes ++ ' mins',
+rating: payload.ratings.rating,
+genres: flatten(payload.genres) joinBy ",",
+releaseDate: payload.releaseDate,
+plot:{
+	outline:payload.plotOutline.text,
+	summary:payload.plotSummary.text
+}}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="get:\getUserReviews:imdb-api-config">
+        <set-variable value="#[attributes.queryParams.titleId]" doc:name="Set titleId" doc:id="7736c962-df30-40ad-ade7-a33fdeac6a28" variableName="titleId" />
+        <http:request method="GET" doc:name="Request title/get-user-reviews" doc:id="3ca56716-0168-43dd-89c6-ce98a9435bea" config-ref="IMDB" path="/title/get-user-reviews">
+            <http:headers><![CDATA[#[output application/java
+---
+{
+	"X-Rapidapi-Key" : "60e11edbd4msh01a6924bacdeda6p1be6fejsnd857e4dd56ea"
+}]]]></http:headers>
+            <http:query-params><![CDATA[#[output application/java
+---
+{
+	tconst : vars.titleId
+}]]]></http:query-params>
+        </http:request>
+        <ee:transform doc:name="Transform Message" doc:id="17536be6-9d01-4469-88ee-2700eafb1cd9">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+import * from dw::core::Strings
+output application/json
+---
+{
+	"titleDetails": {
+		"titleId": substringBefore(substringAfter(payload.base.id,"/title/"),"/"),
+		"titleName": payload.base.title,
+		"titleType": payload.base.titleType,
+		"releaseYear":payload.base.year
+		
+	}
+} ++{
+	"reviews": (payload.reviews map {
+		"reviewer": $.author.displayName,
+		"rating": $.authorRating,
+		"reviewDate": $.submissionDate,
+		"reviewTitle": $.reviewTitle,
+		"review": $.reviewText
+	})
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="get:\getVideos:imdb-api-config">
+        <set-variable value="#[attributes.queryParams.titleId]" doc:name="Set titleId" doc:id="1d9cb60a-a58e-422c-bf57-674666ae7265" variableName="titleId" />
+        <http:request method="GET" doc:name="Request title/get-videos" doc:id="e69df0de-ae0c-4135-9ccd-380e89a18ee9" config-ref="IMDB" path="/title/get-videos">
+            <http:headers><![CDATA[#[output application/java
+---
+{
+	"X-Rapidapi-Key" : "60e11edbd4msh01a6924bacdeda6p1be6fejsnd857e4dd56ea"
+}]]]></http:headers>
+            <http:query-params><![CDATA[#[output application/java
+---
+{
+	tconst : vars.titleId
+}]]]></http:query-params>
+        </http:request>
+        <ee:transform doc:name="Transform Message" doc:id="d6778bef-a3cc-40a8-b7d8-3459fb335e4a">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="results"><![CDATA[%dw 2.0
+output application/java
+---
+[] as Array]]></ee:set-variable>
+                <ee:set-variable variableName="videos"><![CDATA[%dw 2.0
+import * from dw::core::Strings
+output application/java
+---
+
+payload.resource.videos filter ($.contentType == "Clip" or $.contentType == "Trailer") map{
+	videoId:substringAfter($.id,"/videoV2/"),
+	contentType:$.contentType,
+	duration:$.durationInSeconds ++ ' secs',
+	description:$.description,
+	title:$.title
+} filter (($$) as Number < 3)]]></ee:set-variable>
+                <ee:set-variable variableName="titleDetails"><![CDATA[%dw 2.0
+import * from dw::core::Strings
+output application/java
+---
+{
+	titleId: substringBefore(substringAfter(payload.resource.id,"/title/"),"/"),
+	titleName:payload.resource.title,
+	titleType:payload.resource.titleType,
+	year:payload.resource.year
+}]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <foreach doc:name="For Each" doc:id="e3f5fc9b-ca05-45c1-b5ce-728ca44dd79c" collection="#[vars.videos]">
+            <logger level="INFO" doc:name="Logger" doc:id="3860deeb-7ba9-4c2c-a7fa-d805e402e2a6" />
+            <ee:transform doc:name="Transform Message" doc:id="68399f1b-7878-4c41-a0d2-11512d7067b6">
+                <ee:message />
+                <ee:variables>
+                    <ee:set-variable variableName="curVideo"><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-variable>
+                </ee:variables>
+            </ee:transform>
+            <http:request method="GET" doc:name="Request /title/get-video-playback" doc:id="6e9b6ee5-8069-40fa-a277-2b8214cfdd59" config-ref="IMDB" path="/title/get-video-playback">
+                <http:headers><![CDATA[#[output application/java
+---
+{
+	"X-Rapidapi-Key" : "60e11edbd4msh01a6924bacdeda6p1be6fejsnd857e4dd56ea"
+}]]]></http:headers>
+                <http:query-params><![CDATA[#[output application/java
+---
+{
+	viconst : payload.videoId
+}]]]></http:query-params>
+            </http:request>
+            <ee:transform doc:name="Transform Message" doc:id="0f59dc42-96f6-4458-b337-f8ccd5d0ae84">
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload.resource.encodings map {
+	definition:$.definition,
+	url:$.playUrl
+}]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+            <ee:transform doc:name="Transform Message" doc:id="68b57e83-6c60-4c19-ade6-8ee5755632c7">
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+vars.curVideo ++ { links : (payload) }]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+            <ee:transform doc:name="Transform Message" doc:id="798bb85f-11d3-4cb6-8059-053a7e7dca39">
+                <ee:message />
+                <ee:variables>
+                    <ee:set-variable variableName="results"><![CDATA[%dw 2.0
+output application/java
+---
+(vars.results + payload)]]></ee:set-variable>
+                </ee:variables>
+            </ee:transform>
+            <logger level="INFO" doc:name="Logger" doc:id="728abaee-1490-49ce-9f41-a063ff92ed49" />
+        </foreach>
+        <ee:transform doc:name="Transform Message" doc:id="6398bab7-3f8b-4eea-8f23-5c5fe5fe7d66">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.titleDetails ++ {trailer:vars.results}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+</mule>
